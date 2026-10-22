@@ -5,7 +5,7 @@ import traceback
 import threading 
 import time
 
-from dataclass import dataclass
+from dataclasses import dataclass
 from queue import Queue, Full, Empty
 from typing import Optional
 
