@@ -2,7 +2,7 @@
 Defines the standardized result format shared with the application layer.
 """
 from dataclasses import dataclass, field
-from typing import any
+from typing import Any
 
 @dataclass
 class InspectionResult:
