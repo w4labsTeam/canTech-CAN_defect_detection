@@ -2,6 +2,7 @@
 import threading
 import time
 import traceback
+import cv2
 
 from queue import Empty
 
@@ -13,14 +14,14 @@ from acquisition.capture import (
 )
 
 from inspection.inspector import InspectionWorker
-
+from application.display import render_result
 
 # ---------------------------------------------------------------------
 # Application
 # ---------------------------------------------------------------------
 
 def print_result(result):
-    """Display a standardized inspection result."""
+    """print the result and display the annotated image."""
 
     if result.error is not None:
         print(
@@ -28,17 +29,23 @@ def print_result(result):
             f"Frame={result.frame_id} | "
             f"Error={result.error}"
         )
-        return
+    
+    else:
+        status = "DEFECTIVE" if result.is_defective else "NORMAL"
 
-    status = "DEFECTIVE" if result.is_defective else "NORMAL"
+        print(
+            f"[RESULT] "
+            f"Frame={result.frame_id} | "
+            f"Status={status} | "
+            f"Confidence={result.confidence:.3f} | "
+            f"Inference={result.processing_time_ms:.2f} ms"
+        )
 
-    print(
-        f"[RESULT] "
-        f"Frame={result.frame_id} | "
-        f"Status={status} | "
-        f"Confidence={result.confidence:.3f} | "
-        f"Inference={result.processing_time_ms:.2f} ms"
-    )
+    display_image = render_result(result)
+
+    if display_image is not None:
+        cv2.imshow("Can Defect Inspection", display_image)
+        cv2.waitKey(1)
 
 
 def main():
@@ -150,6 +157,7 @@ def main():
                 except Empty:
                     break
 
+        cv2.destroyAllWindows()
         print("Application stopped.")
 
 

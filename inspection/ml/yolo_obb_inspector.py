@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 from ultralytics import YOLO
+import cv2
 
 from inspection.base import BaseInspector
 from inspection.result import InspectionResult
@@ -18,14 +19,25 @@ from inspection.result import InspectionResult
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 # Model location 
-MODEL_PATH = PROJECT_ROOT / "models" / "best.pt"
+MODEL_PATH = PROJECT_ROOT / "models" / "model_no2.pt"
 
 # Initial inference threshold.
-CONFIDENCE_THRESHOLD = 0.60
+CONFIDENCE_THRESHOLD = 0.40
 
 # model class mapping
 DEFECT_CLASS_ID = 0
 NORMAL_CLASS_ID = 1
+
+
+def correct_color(frame):
+    # OpenCV channel order is BGR
+    b, g, r = cv2.split(frame)
+
+    b = cv2.convertScaleAbs(b, alpha=0.50)  # Reduce blue
+    g = cv2.convertScaleAbs(g, alpha=0.75)  # Slightly reduce green
+    r = cv2.convertScaleAbs(r, alpha=1.00)  # Boost red
+
+    return cv2.merge([b, g, r])
 
 class YOLOOBBInspector(BaseInspector):
     """
@@ -98,6 +110,8 @@ class YOLOOBBInspector(BaseInspector):
             if image is None or image.size == 0:
                 raise ValueError("Input image is empty")
 
+            image = correct_color(image)
+
             # Run oriented bounding box interface.
             prediction = self.model.predict(
                 source=image,
@@ -105,6 +119,25 @@ class YOLOOBBInspector(BaseInspector):
                 device=self.device,
                 verbose=False
             )[0]
+
+            obb = prediction.obb
+
+            print("\n========== YOLO DEBUG ==========")
+            print("Image shape:", image.shape)
+            print("Class names:", prediction.names)
+            print("OBB object:", obb)
+
+            if obb is None:
+                print("OBB is None")
+            elif len(obb) == 0:
+                print("No detections even at confidence 0.001")
+            else:
+                print("Number of detections:", len(obb))
+                print("Classes:", obb.cls.cpu().numpy())
+                print("Confidences:", obb.conf.cpu().numpy())
+                print("OBB coordinates:", obb.xyxyxyxy.cpu().numpy())
+
+            print("================================\n")
 
             detections = []
             defect_confidences = []
@@ -173,6 +206,7 @@ class YOLOOBBInspector(BaseInspector):
                 confidence=decision_confidence,
                 detections=detections,
                 processing_time_ms=elapsed_ms,
+                image=image,
             )
 
         except Exception as exc:
@@ -187,7 +221,8 @@ class YOLOOBBInspector(BaseInspector):
                 confidence=0.0,
                 detections=[],
                 processing_time_ms=elapsed_ms,
-                error=str(exc)
+                error=str(exc),
+                image=image,
             )
 
 

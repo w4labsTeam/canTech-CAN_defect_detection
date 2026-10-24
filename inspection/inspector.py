@@ -8,7 +8,7 @@ import traceback
 from queue import Queue, Empty, Full
 
 from acquisition.capture import (
-    FramePackets,
+    FramePacket,
     frame_queue,
 )
 
@@ -51,7 +51,7 @@ class InspectionWorker:
         self.last_fault = None
 
         self.thread = threading.Thread(
-            target=self.run,
+            target=self._run,
             name="InspectionWorker",
             daemon=False,
         )

@@ -21,7 +21,7 @@ from camera.config import (
 # Frame Packet
 # --------------------------------------------------------------------
 @dataclass
-class FramePackets:
+class FramePacket:
     """An acquired image and its acquisition metadata"""
 
     frame_id: int
@@ -34,7 +34,7 @@ class FramePackets:
 # --------------------------------------------------------------------
 FRAME_QUEUE_SIZE = 10
 
-frame_queue: Queue[FramePackets] = Queue(maxsize=FRAME_QUEUE_SIZE)
+frame_queue: Queue[FramePacket] = Queue(maxsize=FRAME_QUEUE_SIZE)
 
 stop_event = threading.Event()
 acquisition_fault_event = threading.Event()
@@ -119,7 +119,7 @@ def grab_callback(hCamera, pRawData, pFrameHead, pContext):
             mvsdk.CameraFlipFrameBuffer(
                 pFrameBuffer,
                 frame_head,
-                1.
+                1
             )
 
         height = frame_head.iHeight
@@ -140,7 +140,7 @@ def grab_callback(hCamera, pRawData, pFrameHead, pContext):
         # Essential: detach the image from the reusable SDK buffer
         frame = frame.copy()
 
-        packet = FramePackets(
+        packet = FramePacket(
             frame_id = frame_id,
             timestamp_ns = timestamp_ns,
             image = frame,
@@ -163,6 +163,8 @@ def grab_callback(hCamera, pRawData, pFrameHead, pContext):
     except Exception as exc:
         with fault_lock:
             callback_error_count += 1
+
+        traceback.print_exc()
 
         _set_acquisition_fault(
             f"Error processing frame {frame_id}: {exc}."
@@ -304,6 +306,55 @@ def capture_main(preview: bool = False) -> None:
 
 
         # ---------------------------------------------------------
+        # 11. Other configurations
+        # ---------------------------------------------------------
+        gain_range = mvsdk.CameraGetAnalogGainXRange(hCamera)
+        print("Analog gain range: ", gain_range)
+
+        current_gain = mvsdk.CameraGetGain(hCamera)
+        print("Current RGB gain range: ", current_gain)
+
+
+        # ---------------------------------------------------------
+        # Configure Color Temperature
+        # ---------------------------------------------------------
+
+        # CT_MODE_AUTO = 0
+        COLOR_TEMPERATURE_AUTO = 1
+
+        # status = mvsdk.CameraSetClrTempMode(
+        #     hCamera,
+        #     COLOR_TEMPERATURE_AUTO
+        # )
+        status = mvsdk.CameraSetPresetClrTemp(
+            hCamera,
+            COLOR_TEMPERATURE_AUTO,
+        )
+
+        print(mvsdk.CameraGetPresetClrTemp(hCamera))
+
+        if status != mvsdk.CAMERA_STATUS_SUCCESS:
+            print(
+                "Failed to set automatic color temperature. "
+                f"SDK status: {status}"
+            )
+        else:
+
+            # Read back the selected mode
+            try:
+                current_mode = mvsdk.CameraGetClrTempMode(hCamera)
+                print(f"Current color temperature mode: {current_mode}")
+
+                if current_mode == COLOR_TEMPERATURE_AUTO:
+                    print("Verified: color temperature is AUTO")
+                else:
+                    print("Warning: returned mode is not AUTO")
+
+            except Exception as exc:
+                print(f"Could not read back color temperature mode: {exc}")
+                
+
+        # ---------------------------------------------------------
         # 7. Configure Trigger 
         # ---------------------------------------------------------
         print(
@@ -365,6 +416,10 @@ def capture_main(preview: bool = False) -> None:
 
         camera_started = True
 
+        # Verify color-temperature mode after starting acquisition
+        current_mode = mvsdk.CameraGetClrTempMode(hCamera)
+        print(f"Color temperature mode after CameraPlay: {current_mode}")
+
         print("Camera Started..")
         print("\nWaiting for hardware trigger...")
 
@@ -373,17 +428,6 @@ def capture_main(preview: bool = False) -> None:
                 DISPLAY_WINDOW_NAME,
                 cv2.WINDOW_NORMAL,
             )
-
-
-        # ---------------------------------------------------------
-        # 11. Other configurations
-        # ---------------------------------------------------------
-        gain_range = mvsdk.CameraGetAnalogGainXRange(hCamera)
-        print("Analog gain range: ", gain_range)
-
-        current_gain = mvsdk.CameraGetGain(hCamera)
-        print("Current RGB gain range: ", current_gain)
-
 
         # ---------------------------------------------------------
         # 12. Keep acquisition alive until user requests exit

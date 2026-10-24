@@ -4,6 +4,8 @@ Defines the standardized result format shared with the application layer.
 from dataclasses import dataclass, field
 from typing import Any
 
+import numpy as np
+
 @dataclass
 class InspectionResult:
     """
@@ -27,3 +29,6 @@ class InspectionResult:
 
     # Optional error description
     error: str | None = None
+
+    # Original Image associated with this result.
+    image: np.ndarray | None = field(default=None, repr=False)
