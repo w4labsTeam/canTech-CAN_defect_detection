@@ -41,11 +41,11 @@ def print_result(result):
             f"Inference={result.processing_time_ms:.2f} ms"
         )
 
-    display_image = render_result(result)
+    # display_image = render_result(result)
 
-    if display_image is not None:
-        cv2.imshow("Can Defect Inspection", display_image)
-        cv2.waitKey(1)
+    # if display_image is not None:
+    #     cv2.imshow("Can Defect Inspection", display_image)
+    #     cv2.waitKey(1)
 
 
 def main():
@@ -85,6 +85,63 @@ def main():
         camera_thread.start()
 
         print("System running. Press Ctrl+C to stop.")
+
+        # -------------------------------------------------------------
+        # 4. Monitor results and system faults
+        # -------------------------------------------------------------
+        window_name = "Can Defect Inspection"
+
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        print("System running. Press Q or ESC to stop.")
+
+        while camera_thread.is_alive():
+
+            # Stop if the inspection worker reports a fatal fault.
+            if inspection_worker.fault_event.is_set():
+                print(
+                    "[APPLICATION FAULT] "
+                    f"{inspection_worker.last_fault}"
+                )
+                break
+
+            # Stop if acquisition reports a fault.
+            if acquisition_fault_event.is_set():
+                print(
+                    "[APPLICATION FAULT] "
+                    f"{get_acquisition_status()}"
+                )
+                break
+
+            try:
+                result = inspection_worker.get_result(timeout=0.01)
+
+                print_result(result)
+
+                display_image = render_result(result)
+
+                if display_image is not None:
+                    cv2.imshow(window_name, display_image)
+
+            except Empty:
+                pass
+
+            # Process GUI events on every iteration, including when
+            # no new inspection result is available.
+            key = cv2.waitKey(1) & 0xFF
+
+            if key == ord("q") or key == 27:
+                print("Shutdown requested from display window.")
+                break
+
+            # Stop if the user closes the window.
+            try:
+                if cv2.getWindowProperty(
+                    window_name, cv2.WND_PROP_VISIBLE
+                ) < 1:
+                    break
+            except cv2.error:
+                break
+
 
         # -------------------------------------------------------------
         # 4. Monitor results and system faults

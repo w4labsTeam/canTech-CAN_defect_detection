@@ -23,3 +23,5 @@ TRIGGER_EDGE = 0
 
 # Name of the OpenCV display window 
 DISPLAY_WINDOW_NAME = "Mindvision - Hardware Trigger"
+
+TRIGGER_DELAY_US = 95000  # 5 ms

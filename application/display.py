@@ -4,14 +4,12 @@ import numpy as np
 
 from inspection.result import InspectionResult
 
-
 # Display colors use OpenCV's BGR ordering.
 COLOR_DEFECT = (0, 0, 255)       # Red
 COLOR_NORMAL = (0, 180, 0)       # Green
 COLOR_ERROR = (0, 165, 255)      # Orange
 COLOR_TEXT = (255, 255, 255)
 COLOR_BACKGROUND = (35, 35, 35)
-
 
 def render_result(result: InspectionResult) -> np.ndarray | None:
     """Draw inspection results on the associated image."""

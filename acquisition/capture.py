@@ -14,7 +14,8 @@ from camera.config import (
     EXPOSURE_TIME_US,
     TRIGGER_MODE,
     DISPLAY_WINDOW_NAME,
-    TRIGGER_EDGE
+    TRIGGER_EDGE,
+    TRIGGER_DELAY_US
 )
 
 # --------------------------------------------------------------------
@@ -374,6 +375,28 @@ def capture_main(preview: bool = False) -> None:
                 raise RuntimeError("Failed to set trigger edge type")
 
             print("Hardware trigger configured")
+
+
+        # ---------------------------------------------------------
+        # 7. Add Hardware trigger 
+        # ---------------------------------------------------------
+        # Configure trigger delay
+        status = mvsdk.CameraSetTriggerDelayTime(
+            hCamera,
+            TRIGGER_DELAY_US
+        )
+
+        print(f"Trigger delay configuration status: {status}")
+
+        if status != 0:
+            raise RuntimeError(
+                f"Failed to set trigger delay: SDK error {status}"
+            )
+
+        # Read back the configured delay, if supported by the wrapper
+        if hasattr(mvsdk, "CameraGetTriggerDelayTime"):
+            actual_delay = mvsdk.CameraGetTriggerDelayTime(hCamera)
+            print(f"Configured trigger delay: {actual_delay} us")
 
 
         # ---------------------------------------------------------
