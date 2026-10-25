@@ -3,7 +3,7 @@
 # -----------------------------------------------------
 
 # Exposure time in microseconds 
-EXPOSURE_TIME_US = 1000
+EXPOSURE_TIME_US = 800
 
 # MindVision Trigger modes:
 
@@ -24,4 +24,4 @@ TRIGGER_EDGE = 0
 # Name of the OpenCV display window 
 DISPLAY_WINDOW_NAME = "Mindvision - Hardware Trigger"
 
-TRIGGER_DELAY_US = 95000  # 5 ms
+TRIGGER_DELAY_US = 175000  # 5 ms

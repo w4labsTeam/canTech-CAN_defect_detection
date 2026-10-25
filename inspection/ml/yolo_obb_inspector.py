@@ -34,8 +34,8 @@ def correct_color(frame):
     b, g, r = cv2.split(frame)
 
     b = cv2.convertScaleAbs(b, alpha=0.50)  # Reduce blue
-    g = cv2.convertScaleAbs(g, alpha=0.75)  # Slightly reduce green
-    r = cv2.convertScaleAbs(r, alpha=1.00)  # Boost red
+    g = cv2.convertScaleAbs(g, alpha=0.70)  # Slightly reduce green
+    r = cv2.convertScaleAbs(r, alpha=0.80)  # Boost red
 
     return cv2.merge([b, g, r])
 
