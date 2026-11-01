@@ -1,0 +1,412 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>CAN Inspection | AI Monitoring</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <!-- ================================================= -->
+    <!-- HEADER -->
+    <!-- ================================================= -->
+
+    <header class="header">
+
+        <div class="brand">
+
+            <div class="brand-icon">
+                <span>AI</span>
+            </div>
+
+            <div class="brand-text">
+                <h1>CAN INSPECTION</h1>
+                <p>AI-Powered Quality Monitoring System</p>
+            </div>
+
+        </div>
+
+        <div class="header-right">
+
+            <div class="connection-indicator">
+                <span class="status-dot" id="mqtt-dot"></span>
+                <span id="mqtt-label">CONNECTING</span>
+            </div>
+
+            <div class="clock" id="clock">
+                --:--:--
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- ================================================= -->
+    <!-- MAIN CONTENT -->
+    <!-- ================================================= -->
+
+    <main>
+
+        <!-- PRODUCTION OVERVIEW -->
+
+        <section class="section">
+
+            <div class="section-heading">
+                <div>
+                    <h2>Production Overview</h2>
+                    <p>Overall inspection performance</p>
+                </div>
+
+                <span class="section-tag">LIFETIME TOTALS</span>
+            </div>
+
+
+            <div class="stats-grid">
+
+                <!-- Total -->
+
+                <div class="stat-card total-card">
+
+                    <div class="stat-top">
+                        <span class="stat-label">TOTAL INSPECTED</span>
+                        <span class="stat-icon blue">▣</span>
+                    </div>
+
+                    <div class="stat-value" id="total-inspected">
+                        0
+                    </div>
+
+                    <div class="stat-footer">
+                        CAN units inspected
+                    </div>
+
+                    <div class="stat-secondary">
+                        Current session:
+                        <span id="session-total">0</span>
+                    </div>
+
+                </div>
+
+
+                <!-- Passed -->
+
+                <div class="stat-card passed-card">
+
+                    <div class="stat-top">
+                        <span class="stat-label">PASSED CANS</span>
+                        <span class="stat-icon green">✓</span>
+                    </div>
+
+                    <div class="stat-value" id="passed-cans">
+                        0
+                    </div>
+
+                    <div class="stat-footer">
+                        <span id="yield-percentage">0.00</span>% yield
+                    </div>
+
+                    <div class="stat-secondary">
+                        Current session:
+                        <span id="session-passed">0</span>
+                    </div>
+
+                </div>
+
+
+                <!-- Defective -->
+
+                <div class="stat-card defective-card">
+
+                    <div class="stat-top">
+                        <span class="stat-label">DEFECTIVE CANS</span>
+                        <span class="stat-icon red">!</span>
+                    </div>
+
+                    <div class="stat-value" id="defective-cans">
+                        0
+                    </div>
+
+                    <div class="stat-footer">
+                        <span id="lifetime-defect-percentage">0.00</span>%
+                        lifetime defect rate
+                    </div>
+
+                    <div class="stat-secondary">
+                        Current session:
+                        <span id="session-defective">0</span>
+                    </div>
+
+                </div>
+
+
+                <!-- Inspection rate -->
+
+                <div class="stat-card rate-card">
+
+                    <div class="stat-top">
+                        <span class="stat-label">INSPECTION RATE</span>
+                        <span class="stat-icon blue">↗</span>
+                    </div>
+
+                    <div class="stat-value" id="inspection-rate">
+                        0
+                    </div>
+
+                    <div class="stat-footer">
+                        CANs / minute
+                    </div>
+
+                    <div class="stat-secondary">
+                        Current session defect rate:
+                        <span id="session-defect-percentage">0.00</span>%
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- PRODUCTION ANALYTICS -->
+        <!-- ================================================= -->
+
+        <section class="section">
+
+            <div class="section-heading">
+
+                <div>
+                    <h2>Production Analytics</h2>
+                    <p>Real-time production monitoring</p>
+                </div>
+
+                <span class="live-tag">
+                    <span class="live-dot"></span>
+                    LIVE DATA
+                </span>
+
+            </div>
+
+
+            <div class="charts-grid">
+
+                <!-- Inspection Rate -->
+
+                <div class="panel chart-panel">
+
+                    <div class="panel-heading">
+
+                        <div>
+                            <h3>Inspection Rate</h3>
+                            <p>CANs processed per minute</p>
+                        </div>
+
+                        <span class="chart-unit">CANs/min</span>
+
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="inspection-chart"></canvas>
+                    </div>
+
+                </div>
+
+
+                <!-- Defect Percentage -->
+
+                <div class="panel chart-panel">
+
+                    <div class="panel-heading">
+
+                        <div>
+                            <h3>Defect Percentage</h3>
+                            <p>Current session defect rate</p>
+                        </div>
+
+                        <span class="chart-unit">%</span>
+
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="defect-chart"></canvas>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- SYSTEM STATUS AND SESSION -->
+        <!-- ================================================= -->
+
+        <section class="bottom-grid">
+
+
+            <!-- SYSTEM STATUS -->
+
+            <div class="panel">
+
+                <div class="panel-heading">
+                    <div>
+                        <h3>System Status</h3>
+                        <p>Inspection system health</p>
+                    </div>
+                </div>
+
+
+                <div class="status-list">
+
+                    <div class="status-row">
+
+                        <div class="status-name">
+                            <span class="status-symbol">◉</span>
+                            Camera
+                        </div>
+
+                        <span class="status-badge unknown"
+                              id="camera-status">
+                            UNKNOWN
+                        </span>
+
+                    </div>
+
+
+                    <div class="status-row">
+
+                        <div class="status-name">
+                            <span class="status-symbol">◆</span>
+                            AI Model
+                        </div>
+
+                        <span class="status-badge unknown"
+                              id="model-status">
+                            UNKNOWN
+                        </span>
+
+                    </div>
+
+
+                    <div class="status-row">
+
+                        <div class="status-name">
+                            <span class="status-symbol">⚙</span>
+                            Inspection Service
+                        </div>
+
+                        <span class="status-badge unknown"
+                              id="service-status">
+                            UNKNOWN
+                        </span>
+
+                    </div>
+
+
+                    <div class="status-row">
+
+                        <div class="status-name">
+                            <span class="status-symbol">⇄</span>
+                            MQTT Broker
+                        </div>
+
+                        <span class="status-badge unknown"
+                              id="mqtt-status">
+                            UNKNOWN
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- SESSION STATISTICS -->
+
+            <div class="panel">
+
+                <div class="panel-heading">
+
+                    <div>
+                        <h3>Current Session</h3>
+                        <p>Statistics since last inactivity reset</p>
+                    </div>
+
+                </div>
+
+
+                <div class="session-list">
+
+                    <div class="session-row">
+                        <span>Total inspected</span>
+                        <strong id="session-total-detail">0</strong>
+                    </div>
+
+                    <div class="session-row">
+                        <span>Passed</span>
+                        <strong class="text-green"
+                                id="session-passed-detail">0</strong>
+                    </div>
+
+                    <div class="session-row">
+                        <span>Defective</span>
+                        <strong class="text-red"
+                                id="session-defective-detail">0</strong>
+                    </div>
+
+                    <div class="session-row">
+                        <span>Inspection errors</span>
+                        <strong id="session-errors-detail">0</strong>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- FOOTER -->
+        <!-- ================================================= -->
+
+        <footer class="footer">
+
+            <span>
+                CAN Inspection System | AI Quality Monitoring
+            </span>
+
+            <span>
+                Last update:
+                <strong id="last-update">Waiting for data...</strong>
+            </span>
+
+        </footer>
+
+    </main>
+
+</div>
+
+
+<!-- Dashboard JavaScript -->
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
+</body>
+</html>
