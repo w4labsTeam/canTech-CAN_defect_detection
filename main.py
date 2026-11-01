@@ -16,6 +16,8 @@ from acquisition.capture import (
 from inspection.inspector import InspectionWorker
 from application.display import render_result
 
+from communication.mqtt_publisher import CANInspectionMQTT
+
 # ---------------------------------------------------------------------
 # Application
 # ---------------------------------------------------------------------
@@ -69,6 +71,27 @@ def main():
 
         # Loads the YOLO model before camera acquisition begins.
         inspection_worker = InspectionWorker()
+        print("[SYSTEM] AI model loaded successfully.")
+
+        # -------------------------------------------------------------
+        # 2. Initialize MQTT monitoring 
+        # -------------------------------------------------------------
+        print ("Initializing MQTT monitoring...")
+
+        mqtt_monitor = CANInspectionMQTT(
+            host="127.0.0.1",
+            port=1883,
+            publish_interval=1.0,
+            idle_reset_seconds=60.0,
+            rate_window_seconds=5.0,
+        )
+
+        mqtt_monitor.set_status(
+            ai_model="LOADED",
+            camera="STARTING",
+            inspection_service="STARTING",
+        )
+        mqtt_monitor.start()
 
         # -------------------------------------------------------------
         # 2. Start inspection worker
@@ -77,12 +100,20 @@ def main():
         print("Starting inspection worker...")
         inspection_worker.start()
 
+        mqtt_monitor.set_status(
+            inspection_service="RUNNING"
+        )
+
         # -------------------------------------------------------------
         # 3. Start camera acquisition
         # -------------------------------------------------------------
 
         print("Starting camera acquisition...")
         camera_thread.start()
+
+        mqtt_monitor.set_status(
+            camera="RUNNING"
+        )
 
         print("System running. Press Ctrl+C to stop.")
 
@@ -102,6 +133,10 @@ def main():
                     "[APPLICATION FAULT] "
                     f"{inspection_worker.last_fault}"
                 )
+
+                mqtt_monitor.set_status(
+                    inspection_service="ERROR"
+                )
                 break
 
             # Stop if acquisition reports a fault.
@@ -110,11 +145,16 @@ def main():
                     "[APPLICATION FAULT] "
                     f"{get_acquisition_status()}"
                 )
+                mqtt_monitor.set_status(
+                    camera="ERROR"
+                )
+
                 break
 
             try:
                 result = inspection_worker.get_result(timeout=0.01)
 
+                mqtt_monitor.record_result(result)
                 print_result(result)
 
                 display_image = render_result(result)
@@ -142,36 +182,6 @@ def main():
             except cv2.error:
                 break
 
-
-        # -------------------------------------------------------------
-        # 4. Monitor results and system faults
-        # -------------------------------------------------------------
-
-        while camera_thread.is_alive():
-
-            # Stop if the inspection worker reports a fatal fault.
-            if inspection_worker.fault_event.is_set():
-                print(
-                    "[APPLICATION FAULT] "
-                    f"{inspection_worker.last_fault}"
-                )
-                break
-
-            # Stop if acquisition reports a fault.
-            if acquisition_fault_event.is_set():
-                print(
-                    "[APPLICATION FAULT] "
-                    f"{get_acquisition_status()}"
-                )
-                break
-
-            try:
-                result = inspection_worker.get_result(timeout=0.1)
-                print_result(result)
-
-            except Empty:
-                continue
-
     except KeyboardInterrupt:
         print("\nShutdown requested by user.")
 
@@ -183,7 +193,7 @@ def main():
         # -------------------------------------------------------------
         # 5. Stop acquisition first
         # -------------------------------------------------------------
-
+        print("Stopping camera acquisition...")
         stop_capture()
 
         if camera_thread.ident is not None:
@@ -210,10 +220,23 @@ def main():
             while True:
                 try:
                     result = inspection_worker.get_result(timeout=0)
+
+                    if mqtt_monitor is not None:
+                        mqtt_monitor.record_result(result)
+
                     print_result(result)
                 except Empty:
                     break
 
+        # -------------------------------------------------------------
+        # 7. Stop MQTT monitoring
+        # -------------------------------------------------------------
+        if mqtt_monitor is not None:
+            mqtt_monitor.stop()
+
+        # -------------------------------------------------------------
+        # 9. Release GUI resources
+        # -------------------------------------------------------------
         cv2.destroyAllWindows()
         print("Application stopped.")
 
