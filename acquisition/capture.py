@@ -376,6 +376,33 @@ def capture_main(preview: bool = False) -> None:
 
             print("Hardware trigger configured")
 
+        # ---------------------------------------------------------
+        # Configure Camera STROBE Output
+        # ---------------------------------------------------------
+
+        print("Configuring STROBE output...")
+
+        # Automatic STROBE mode:
+        # The output follows the camera exposure timing.
+        status = mvsdk.CameraSetStrobeMode(
+            hCamera,
+            1
+        )
+
+        if status != mvsdk.CAMERA_STATUS_SUCCESS:
+            raise RuntimeError(
+                f"Failed to configure STROBE mode: SDK error {status}"
+            )
+
+        # Read back the configured mode
+        actual_strobe_mode = mvsdk.CameraGetStrobeMode(hCamera)
+
+        print(f"STROBE mode configured: {actual_strobe_mode}")
+
+        # Read current output polarity
+        actual_strobe_polarity = mvsdk.CameraGetStrobePolarity(hCamera)
+
+        print(f"STROBE polarity: {actual_strobe_polarity}")
 
         # ---------------------------------------------------------
         # 7. Add Hardware trigger 

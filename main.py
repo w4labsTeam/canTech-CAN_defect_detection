@@ -43,13 +43,6 @@ def print_result(result):
             f"Inference={result.processing_time_ms:.2f} ms"
         )
 
-    # display_image = render_result(result)
-
-    # if display_image is not None:
-    #     cv2.imshow("Can Defect Inspection", display_image)
-    #     cv2.waitKey(1)
-
-
 def main():
     """Coordinate camera acquisition and inspection."""
 
