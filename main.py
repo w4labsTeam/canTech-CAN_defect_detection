@@ -151,7 +151,7 @@ def main():
                 mqtt_monitor.record_result(result)
                 print_result(result)
 
-                display_image = render_result(result)
+                display_image = render_result(result) 
 
                 if display_image is not None:
                     cv2.imshow(window_name, display_image)
