@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 from ultralytics import YOLO
 import cv2
+import re
 
 from inspection.base import BaseInspector
 from inspection.result import InspectionResult
@@ -27,11 +28,6 @@ CONFIDENCE_THRESHOLD = 0.40
 # model class mapping
 DEFECT_CLASS_ID = 0
 NORMAL_CLASS_ID = 1
-
-import re
-import cv2
-import numpy as np
-
 
 def correct_color(frame):
     # --------------------------------------------------

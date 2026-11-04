@@ -5,6 +5,7 @@ import traceback
 import cv2
 
 from queue import Empty
+from pathlib import Path
  
 from acquisition.capture import (
     capture_main,
@@ -17,6 +18,16 @@ from inspection.inspector import InspectionWorker
 from application.display import render_result
 
 from communication.mqtt_publisher import CANInspectionMQTT
+
+# ---------------------------------------------------------------------
+# Annotated image storage
+# ---------------------------------------------------------------------
+
+ANNOTATED_IMAGE_DIR = (
+    Path(__file__).resolve().parent / "annotated_images"
+)
+
+ANNOTATED_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------
 # Application
@@ -151,10 +162,34 @@ def main():
                 mqtt_monitor.record_result(result)
                 print_result(result)
 
-                display_image = render_result(result) 
+                # Render bounding boxes and labels
+                display_image = render_result(result)
 
                 if display_image is not None:
+
+                    # Display the annotated image
                     cv2.imshow(window_name, display_image)
+
+                    # Save the final annotated image
+                    if result.error is None:
+
+                        filename = f"frame_{result.frame_id:06d}.png"
+
+                        image_path = ANNOTATED_IMAGE_DIR / filename
+
+                        success = cv2.imwrite(
+                            str(image_path),
+                            display_image
+                        )
+
+                        if success:
+                            print(
+                                f"[ANNOTATED IMAGE SAVED] {filename}"
+                            )
+                        else:
+                            print(
+                                f"[IMAGE SAVE ERROR] {filename}"
+                            )
 
             except Empty:
                 pass

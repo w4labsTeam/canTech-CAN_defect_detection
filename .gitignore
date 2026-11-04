@@ -1,2 +1,5 @@
 # Ignore captured images
 /captured_images/
+
+# Ignore annotations
+/annotated_images/
