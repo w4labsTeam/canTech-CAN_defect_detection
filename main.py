@@ -5,7 +5,7 @@ import traceback
 import cv2
 
 from queue import Empty
-
+ 
 from acquisition.capture import (
     capture_main,
     stop_capture,
@@ -73,7 +73,8 @@ def main():
         inspection_worker = InspectionWorker()
         print("[SYSTEM] AI model loaded successfully.")
 
-        # -------------------------------------------------------------
+        # ----------------------------------------------
+        # ---------------
         # 2. Initialize MQTT monitoring 
         # -------------------------------------------------------------
         print ("Initializing MQTT monitoring...")

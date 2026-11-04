@@ -19,7 +19,7 @@ from inspection.result import InspectionResult
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 # Model location 
-MODEL_PATH = PROJECT_ROOT / "models" / "model_no2.pt"
+MODEL_PATH = PROJECT_ROOT / "models" / "model_no3.pt"
 
 # Initial inference threshold.
 CONFIDENCE_THRESHOLD = 0.40
@@ -28,16 +28,59 @@ CONFIDENCE_THRESHOLD = 0.40
 DEFECT_CLASS_ID = 0
 NORMAL_CLASS_ID = 1
 
+import re
+import cv2
+import numpy as np
+
 
 def correct_color(frame):
-    # OpenCV channel order is BGR
+    # --------------------------------------------------
+    # 1. Colour correction (your existing settings)
+    # --------------------------------------------------
     b, g, r = cv2.split(frame)
 
-    b = cv2.convertScaleAbs(b, alpha=0.50)  # Reduce blue
-    g = cv2.convertScaleAbs(g, alpha=0.70)  # Slightly reduce green
-    r = cv2.convertScaleAbs(r, alpha=0.80)  # Boost red
+    b = cv2.convertScaleAbs(b, alpha=0.60)
+    g = cv2.convertScaleAbs(g, alpha=0.80)
+    r = cv2.convertScaleAbs(r, alpha=0.80)
 
-    return cv2.merge([b, g, r])
+    corrected = cv2.merge([b, g, r])
+
+    # --------------------------------------------------
+    # 2. Increase brightness
+    # --------------------------------------------------
+    brightness = 50    # Try 10-25
+    corrected = cv2.convertScaleAbs(
+        corrected,
+        alpha=1.0,
+        beta=brightness
+    )
+
+    # --------------------------------------------------
+    # 3. Enhance sharpness (Unsharp Masking)
+    # --------------------------------------------------
+    # blurred = cv2.GaussianBlur(
+    #     corrected,
+    #     (0, 0),
+    #     sigmaX=1.0
+    # )
+
+    # sharpened = cv2.addWeighted(
+    #     corrected,
+    #     1.5,       # Original image weight
+    #     blurred,
+    #     -0.5,      # Blur subtraction
+    #     0
+    # )
+    kernel = np.array([
+        [0, -0.3, 0],
+        [-0.3, 2.2, -0.3],
+        [0, -0.3, 0]
+    ], dtype=np.float32)
+
+    sharpened = cv2.filter2D(corrected, -1, kernel)
+
+    return sharpened
+
 
 class YOLOOBBInspector(BaseInspector):
     """
@@ -67,26 +110,47 @@ class YOLOOBBInspector(BaseInspector):
 
         if isinstance(names, dict):
             defect_name = names.get(DEFECT_CLASS_ID)
-            normal_name = names.get(NORMAL_CLASS_ID)
+            # normal_name = names.get(NORMAL_CLASS_ID)
         else:
             defect_name = (
                 names[DEFECT_CLASS_ID]
                 if len(names) > DEFECT_CLASS_ID else None
             )
-            normal_name = (
-                names[NORMAL_CLASS_ID]
-                if len(names) > NORMAL_CLASS_ID else None
-            )
+            # normal_name = (
+            #     names[NORMAL_CLASS_ID]
+            #     if len(names) > NORMAL_CLASS_ID else None
+            # )
 
         if (
             str(defect_name).strip().lower() != "defect"
-            or str(normal_name).strip().lower() != "normal"
+            # or str(normal_name).strip().lower() != "normal"
         ):
             raise ValueError(
                 "Unexpected model class mapping. Expected"
                 "{0: 'defect', 1: 'normal'}, but model.name is"
                 f"{names!r}"
             )
+
+        # --------------------------------------------------
+        # Captured image storage
+        # --------------------------------------------------
+
+        self.save_directory = PROJECT_ROOT / "captured_images"
+        self.save_directory.mkdir(parents=True, exist_ok=True)
+
+        # Find the last saved image number
+        existing_numbers = []
+
+        for file in self.save_directory.glob("frame_*.png"):
+            match = re.fullmatch(r"frame_(\d+)\.png", file.name)
+
+            if match:
+                existing_numbers.append(int(match.group(1)))
+
+        self.image_counter = max(existing_numbers, default=0)
+
+        print(f"Image save directory: {self.save_directory}")
+        print(f"Starting image counter: {self.image_counter}")
 
         print(f"YOLO OBB model loaded: {self.model_path}")
         print(f"Model classes: {names}")
@@ -111,6 +175,25 @@ class YOLOOBBInspector(BaseInspector):
                 raise ValueError("Input image is empty")
 
             image = correct_color(image)
+
+            # --------------------------------------------------
+            # Save captured image with sequential numbering
+            # --------------------------------------------------
+
+            self.image_counter += 1
+
+            filename = f"frame_{self.image_counter:06d}.png"
+            image_path = self.save_directory / filename
+
+            success = cv2.imwrite(str(image_path), image)
+
+            if success:
+                print(
+                    f"[IMAGE SAVED] {filename} | "
+                    f"Total images: {self.image_counter}"
+                )
+            else:
+                print(f"[IMAGE SAVE ERROR] Failed to save {filename}")
 
             # Run oriented bounding box interface.
             prediction = self.model.predict(
