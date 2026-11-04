@@ -171,25 +171,23 @@ def main():
                     cv2.imshow(window_name, display_image)
 
                     # Save the final annotated image
-                    if result.error is None:
+                    filename = f"frame_{result.frame_id:06d}.png"
 
-                        filename = f"frame_{result.frame_id:06d}.png"
+                    image_path = ANNOTATED_IMAGE_DIR / filename
 
-                        image_path = ANNOTATED_IMAGE_DIR / filename
+                    success = cv2.imwrite(
+                        str(image_path),
+                        display_image
+                    )
 
-                        success = cv2.imwrite(
-                            str(image_path),
-                            display_image
+                    if success:
+                        print(
+                            f"[ANNOTATED IMAGE SAVED] {filename}"
                         )
-
-                        if success:
-                            print(
-                                f"[ANNOTATED IMAGE SAVED] {filename}"
-                            )
-                        else:
-                            print(
-                                f"[IMAGE SAVE ERROR] {filename}"
-                            )
+                    else:
+                        print(
+                            f"[IMAGE SAVE ERROR] {filename}"
+                        )
 
             except Empty:
                 pass

@@ -21,10 +21,7 @@ def render_result(result: InspectionResult) -> np.ndarray | None:
     image = result.image.copy()
 
     # Draw the status banner at the top.
-    if result.error:
-        status = "INSPECTION ERROR"
-        banner_color = COLOR_ERROR
-    elif result.is_defective:
+    if result.is_defective:
         status = "DEFECTIVE"
         banner_color = COLOR_DEFECT
     else:
