@@ -19,6 +19,9 @@ from inspection.ml.yolo_obb_inspector import YOLOOBBInspector
 # Maximum number of completed resullts waiting for the application 
 RESULT_QUEUE_SIZE = 100
 
+# Maximum number of results waiting for the PLC worker
+PLC_QUEUE_SIZE = 100
+
 
 class InspectionWorker:
     """
@@ -30,6 +33,7 @@ class InspectionWorker:
         inspector: BaseInspector | None=None,
         input_queue: Queue | None=None,
         output_queue: Queue | None=None,
+        plc_queue: Queue | None=None,
     ):
         self.input_queue = (
             input_queue if input_queue is not None else frame_queue
@@ -39,6 +43,12 @@ class InspectionWorker:
             output_queue
             if output_queue is not None
             else Queue(maxsize=RESULT_QUEUE_SIZE)
+        )
+
+        self.plc_queue = (
+            plc_queue
+            if plc_queue is not None
+            else Queue(maxsize=PLC_QUEUE_SIZE)
         )
 
         self.inspector = (
@@ -84,14 +94,27 @@ class InspectionWorker:
                     )
 
                     # Never silently discard an inspection result.
+                    # Publish the result to application queue
                     try:
                         self.result_queue.put_nowait(result)
 
                     except Full:
                         self.last_fault = (
-                            "Result queue full."
-                            f"Result for frame {result.frame_id}"
-                            "Could not be stored"
+                            "Application Result queue full."
+                            f"frame {result.frame_id} Could not be stored."
+                        )
+                        self.fault_event.set()
+                        self.stop_event.set()
+                        break
+
+                    # Publish the same result to PLC queue
+                    try:
+                        self.plc_queue.put_nowait(result)
+
+                    except Full:
+                        self.last_fault = (
+                            "PLC Result queue full."
+                            f"frame {result.frame_id} Could not be stored."
                         )
                         self.fault_event.set()
                         self.stop_event.set()

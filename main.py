@@ -14,6 +14,7 @@ from acquisition.capture import (
     get_acquisition_status,
 )
 
+from communication.plc_worker import PLCWorker
 from inspection.inspector import InspectionWorker
 from application.display import render_result
 
@@ -75,6 +76,10 @@ def main():
 
         # Loads the YOLO model before camera acquisition begins.
         inspection_worker = InspectionWorker()
+        plc_worker = PLCWorker(
+            result_queue=inspection_worker.plc_queue
+        )
+
         print("[SYSTEM] AI model loaded successfully.")
 
         # ----------------------------------------------
@@ -104,6 +109,7 @@ def main():
 
         print("Starting inspection worker...")
         inspection_worker.start()
+        plc_worker.start()
 
         mqtt_monitor.set_status(
             inspection_service="RUNNING"
@@ -165,6 +171,7 @@ def main():
                 # Render bounding boxes and labels
                 display_image = render_result(result)
 
+                # Save the annotated image if available. If the system gets slow remove this.
                 if display_image is not None:
 
                     # Display the annotated image
@@ -254,6 +261,35 @@ def main():
                     print_result(result)
                 except Empty:
                     break
+
+        # -------------------------------------------------------------
+        # 7. Stop PLC worker
+        # -------------------------------------------------------------
+
+
+        if plc_worker is not None:
+
+            try:
+                plc_worker.stop(timeout=10.0)
+
+            except TimeoutError as exc:
+                print(f"[WARNING] {exc}")
+
+            # Display final PLC status.
+            plc_status = plc_worker.get_status()
+
+            print("[PLC] Final status:", plc_status)
+
+            if plc_worker.fault_event.is_set():
+
+                print("[PLC ERROR] Communication fault occurred.")
+                print("[PLC ERROR]", plc_worker.last_fault)
+
+                if plc_worker.failed_result is not None:
+                    print(
+                        "[PLC ERROR] Failed frame:",
+                        plc_worker.failed_result.frame_id
+                    )
 
         # -------------------------------------------------------------
         # 7. Stop MQTT monitoring

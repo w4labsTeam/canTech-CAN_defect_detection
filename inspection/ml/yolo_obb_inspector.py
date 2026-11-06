@@ -173,7 +173,7 @@ class YOLOOBBInspector(BaseInspector):
             image = correct_color(image)
 
             # --------------------------------------------------
-            # Save captured image with sequential numbering
+            # Save captured image with sequential numbering. Remove if the system gets slow.
             # --------------------------------------------------
 
             self.image_counter += 1
